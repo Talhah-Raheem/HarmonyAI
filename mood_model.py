@@ -100,7 +100,7 @@ class HarmonyMoodModel:
 
         # Sorting by similarity ensures the most aligned moods appear first for recommendation.
         scored = scored.sort_values(by="similarity", ascending=False)
-        return scored.head(top_k)[["title", "artist", "similarity", "mood_vector"]]
+        return scored.head(top_k)
 
     # Provides a natural-language explanation linking user mood to a song's mood vector.
     def explain_song_match(
