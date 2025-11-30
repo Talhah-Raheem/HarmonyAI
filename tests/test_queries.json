@@ -1,0 +1,6 @@
+[
+  {"query": "happy and upbeat", "relevant_artists": ["Ava Lynn","Neon Wolves"]},
+  {"query": "calm and peaceful night", "relevant_artists": ["Calm Harbor","City Nights"]},
+  {"query": "nostalgic memories", "relevant_artists": ["Memory Lane","Retro Echo"]},
+  {"query": "angry and aggressive", "relevant_artists": ["Red Static","Iron Path"]}
+]

@@ -3,3 +3,7 @@ pandas
 streamlit
 pytest
 plotly
+scikit-learn
+scipy
+joblib
+pyarrow
