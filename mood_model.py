@@ -7,6 +7,7 @@ from typing import Dict, List
 
 import numpy as np
 import pandas as pd
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 
 # Represents a point in the mood space using predefined axes.
@@ -21,11 +22,12 @@ class HarmonyMoodModel:
     # Initializes the model with the axes that define the mood space.
     def __init__(self, mood_axes: List[str]) -> None:
         self.mood_axes = mood_axes
+        self.sentiment_analyzer = SentimentIntensityAnalyzer()
 
     # Analyzes text with a lightweight rule-based detector to seed more advanced models later.
     def analyze_text(self, text: str) -> Dict[str, float]:
-        # Rule-based detection serves as a transparent fallback that works offline and
-        # kick-starts the pipeline before heavier NLP models exist.
+        # Combine VADER sentiment with simple keyword cues; remains offline and fast while
+        # capturing negation/intensity better than raw substring counts alone.
         emotion_keywords: Dict[str, List[str]] = {
             "happy": ["happy", "joy", "excited", "hopeful", "positive", "uplifted"],
             "sad": ["sad", "down", "depressed", "unhappy", "lonely"],
@@ -34,6 +36,7 @@ class HarmonyMoodModel:
         }
 
         text_lower = text.lower()
+        sentiment = self.sentiment_analyzer.polarity_scores(text)
         raw_counts: Dict[str, float] = {}
         for emotion, keywords in emotion_keywords.items():
             # Count every substring match to capture repeated mentions of the same feeling.
@@ -42,15 +45,26 @@ class HarmonyMoodModel:
                 count += text_lower.count(keyword)
             raw_counts[emotion] = float(count)
 
-        total = sum(raw_counts.values())
+        pos = max(sentiment.get("pos", 0.0), 0.0)
+        neg = max(sentiment.get("neg", 0.0), 0.0)
+        neu = max(sentiment.get("neu", 0.0), 0.0)
+        compound = sentiment.get("compound", 0.0)
+
+        # Blend sentiment polarity with keyword hints to derive per-emotion signals.
+        scores: Dict[str, float] = {}
+        scores["happy"] = raw_counts["happy"] + max(compound, 0.0) + 0.5 * pos
+        scores["calm"] = raw_counts["calm"] + 0.6 * pos + 0.4 * neu
+        scores["sad"] = raw_counts["sad"] + max(-compound, 0.0) + 0.5 * neg
+        scores["angry"] = raw_counts["angry"] + 0.7 * neg + 0.3 * max(-compound, 0.0)
+
+        total = sum(scores.values())
         if total == 0:
             # If no signals are detected, fall back to uniform tiny scores to avoid zero vectors.
             uniform_score = 1.0 / len(emotion_keywords)
             return {emotion: uniform_score for emotion in emotion_keywords}
 
-        # Normalizing by the total count keeps longer texts from overpowering shorter ones,
-        # producing comparable scores in [0, 1] regardless of message length.
-        return {emotion: count / total for emotion, count in raw_counts.items()}
+        # Normalizing keeps outputs in [0, 1] regardless of text length or sentiment magnitude.
+        return {emotion: value / total for emotion, value in scores.items()}
 
     # Projects the emotion scores onto the configured mood wheel to produce a MoodVector.
     def project_to_mood_wheel(self, emotion_scores: Dict[str, float]) -> MoodVector:
