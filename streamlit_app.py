@@ -54,6 +54,53 @@ def build_demo_catalog() -> pd.DataFrame:
     )
 
 
+@st.cache_data
+def load_catalog() -> pd.DataFrame:
+    """Load processed song catalog and compute mood vectors from lyrics."""
+    import pandas as pd
+    from mood_model import HarmonyMoodModel
+    import numpy as np
+    import random
+
+    # Load cleaned dataset
+    df = pd.read_csv('data/processed/songs_clean.csv')
+
+    # Initialize mood model
+    mood_model = HarmonyMoodModel(['valence', 'energy', 'tension'])
+
+    # Compute mood vectors from lyrics
+    def compute_mood_vector(lyrics: str) -> np.ndarray:
+        try:
+            emotion_scores = mood_model.analyze_text(lyrics)
+            mood_vec = mood_model.project_to_mood_wheel(emotion_scores)
+            return mood_vec.values
+        except:
+            # Fallback to neutral mood if analysis fails
+            return np.array([0.0, 0.0, 0.0])
+
+    df['mood_vector'] = df['lyrics'].apply(compute_mood_vector)
+
+    # Add genre (placeholder - could be enhanced later)
+    genres = ['Pop', 'Rock', 'Indie', 'Alternative', 'Electronic', 'Folk', 'Hip-Hop', 'R&B']
+    df['genre'] = [random.choice(genres) for _ in range(len(df))]
+
+    # Add accent color based on mood
+    def mood_to_color(mood_vec: np.ndarray) -> str:
+        valence, energy, tension = mood_vec
+        if valence > 0.3 and energy > 0.3:
+            return "#7c3aed"  # Purple - upbeat
+        elif valence < -0.3 and energy < 0:
+            return "#0ea5e9"  # Blue - sad
+        elif tension > 0.5 and energy > 0.5:
+            return "#f97316"  # Orange - intense
+        else:
+            return "#10b981"  # Green - calm
+
+    df['accent'] = df['mood_vector'].apply(mood_to_color)
+
+    return df
+
+
 def inject_custom_css() -> None:
     st.markdown(
         """
@@ -474,7 +521,7 @@ def main() -> None:
 
     mood_axes = ["valence", "energy", "tension"]
     model = HarmonyMoodModel(mood_axes=mood_axes)
-    songs = build_demo_catalog()
+    songs = load_catalog()  # Load real songs instead of demo
     top_k = render_sidebar(mood_axes)
 
     mood_prompt = mood_prompt_form()

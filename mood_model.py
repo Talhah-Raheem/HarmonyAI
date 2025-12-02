@@ -26,24 +26,147 @@ class HarmonyMoodModel:
 
     # Analyzes text with a lightweight rule-based detector to seed more advanced models later.
     def analyze_text(self, text: str) -> Dict[str, float]:
-        # Combine VADER sentiment with simple keyword cues; remains offline and fast while
-        # capturing negation/intensity better than raw substring counts alone.
+        # Combine VADER sentiment with negation-aware keyword cues; remains offline and fast while
+        # capturing intensity better than raw substring counts alone.
         emotion_keywords: Dict[str, List[str]] = {
-            "happy": ["happy", "joy", "excited", "hopeful", "positive", "uplifted"],
-            "sad": ["sad", "down", "depressed", "unhappy", "lonely"],
-            "angry": ["angry", "mad", "frustrated", "upset", "irritated"],
-            "calm": ["calm", "relaxed", "peaceful", "chill"],
+            "happy": [
+                "happy",
+                "joy",
+                "joyful",
+                "excited",
+                "hopeful",
+                "positive",
+                "uplifted",
+                "cheerful",
+                "glad",
+                "delighted",
+                "content",
+                "pleased",
+            ],
+            "sad": [
+                "sad",
+                "down",
+                "depressed",
+                "lonely",
+                "melancholy",
+                "blue",
+                "gloomy",
+                "sorrowful",
+                "heartbroken",
+                "disappointed",
+                "miserable",
+            ],
+            "angry": [
+                "angry",
+                "mad",
+                "frustrated",
+                "upset",
+                "irritated",
+                "furious",
+                "annoyed",
+                "enraged",
+                "outraged",
+                "hostile",
+                "resentful",
+            ],
+            "calm": [
+                "calm",
+                "relaxed",
+                "peaceful",
+                "chill",
+                "serene",
+                "tranquil",
+                "mellow",
+                "composed",
+                "centered",
+                "balanced",
+                "still",
+            ],
         }
+
+        # Additional keyword patterns for motivation/energy states
+        motivation_keywords = [
+            "motivated",
+            "energized",
+            "driven",
+            "focused",
+            "determined",
+            "ambitious",
+            "productive",
+            "work",
+            "accomplish",
+            "achieve",
+            "get things done",
+            "push through",
+            "power through",
+        ]
+
+        # Negation patterns to detect reversed sentiment
+        negation_patterns = [
+            "not ",
+            "don't ",
+            "dont ",
+            "no ",
+            "never ",
+            "isn't ",
+            "isnt ",
+            "aren't ",
+            "arent ",
+            "wasn't ",
+            "wasnt ",
+            "won't ",
+            "wont ",
+            "can't ",
+            "cant ",
+            "wouldn't ",
+            "wouldnt ",
+        ]
 
         text_lower = text.lower()
         sentiment = self.sentiment_analyzer.polarity_scores(text)
         raw_counts: Dict[str, float] = {}
+
         for emotion, keywords in emotion_keywords.items():
-            # Count every substring match to capture repeated mentions of the same feeling.
-            count = 0
+            count = 0.0
             for keyword in keywords:
-                count += text_lower.count(keyword)
-            raw_counts[emotion] = float(count)
+                # Find all occurrences of this keyword
+                keyword_positions = []
+                start = 0
+                while True:
+                    pos = text_lower.find(keyword, start)
+                    if pos == -1:
+                        break
+                    keyword_positions.append(pos)
+                    start = pos + 1
+
+                # Check each occurrence for negation
+                for pos in keyword_positions:
+                    # Look for negation in the 20 characters before the keyword
+                    context_start = max(0, pos - 20)
+                    context = text_lower[context_start:pos]
+
+                    is_negated = any(neg in context for neg in negation_patterns)
+
+                    if is_negated:
+                        # Keyword is negated - reduce its count or flip to opposite
+                        count -= 0.5
+                    else:
+                        count += 1.0
+
+            raw_counts[emotion] = max(0.0, float(count))  # Don't allow negative counts
+
+        # Check for motivation/energy keywords
+        motivation_count = 0
+        for keyword in motivation_keywords:
+            if keyword in text_lower:
+                motivation_count += 1
+
+        # If user wants motivation/energy, boost happy and reduce sad
+        if motivation_count > 0:
+            raw_counts["happy"] += motivation_count * 0.5
+            raw_counts["sad"] = max(0.0, raw_counts["sad"] - motivation_count * 0.3)
+            # Boost energy by reducing calm
+            raw_counts["calm"] = max(0.0, raw_counts["calm"] - motivation_count * 0.2)
 
         pos = max(sentiment.get("pos", 0.0), 0.0)
         neg = max(sentiment.get("neg", 0.0), 0.0)
@@ -144,7 +267,9 @@ class HarmonyMoodModel:
         strongest_idx = int(np.argmax(np.abs(user_mood.values)))
         strongest_axis = user_mood.axes[strongest_idx]
         strongest_value = user_mood.values[strongest_idx]
-        axis_direction = "high" if strongest_value > 0 else "low" if strongest_value < 0 else "balanced"
+        axis_direction = (
+            "high" if strongest_value > 0 else "low" if strongest_value < 0 else "balanced"
+        )
         song_axis_value = song_mood[strongest_idx]
         alignment_score = strongest_value * song_axis_value
         if alignment_score > 0:

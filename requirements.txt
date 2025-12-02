@@ -8,3 +8,7 @@ scipy
 joblib
 pyarrow
 vaderSentiment
+requests
+lyricsgenius
+python-dotenv
+tqdm
