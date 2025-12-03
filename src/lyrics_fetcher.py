@@ -248,133 +248,38 @@ class LyricsFetcher:
         limit: int = 50
     ) -> List[Dict]:
         """
-        Search for songs on Genius API.
-
-        This expands the catalog beyond MusicBrainz by searching
-        Genius directly for songs matching a query.
-
-        Args:
-            query: Search query (artist, genre, mood, etc.)
-            limit: Maximum number of songs to return (default: 50)
-
-        Returns:
-            List of song dictionaries with keys:
-            - title: Song title
-            - artist: Artist name
-            - genius_id: Genius song ID
+        Search for songs by ARTIST using Genius API.
         """
         if not self.genius_client:
-            logger.warning("Genius client not initialized. Cannot search songs.")
+            logger.warning("Genius client not initialized.")
             return []
 
         try:
-            logger.info(f"Searching Genius for: '{query}' (limit={limit})")
+            logger.info(f"Fetching top {limit} songs for artist: '{query}'")
 
-            # Use Genius search_songs method (searches across all songs)
-            search_results = []
-            page = 1
-            per_page = min(limit, 50)  # Genius API returns max 50 per page
+            # Use search_artist to reliably get songs by this artist
+            # We use get_full_info=False to make it faster (we fetch lyrics later)
+            artist = self.genius_client.search_artist(
+                query,
+                max_songs=limit,
+                sort='popularity',
+                get_full_info=False
+            )
 
-            while len(search_results) < limit:
-                try:
-                    # Search using the Genius API
-                    results = self.genius_client.search_all(
-                        search_term=query,
-                        per_page=per_page,
-                        page=page
-                    )
-
-                    if not results or 'sections' not in results:
-                        break
-
-                    # Extract songs from search results
-                    for section in results['sections']:
-                        if section['type'] == 'song':
-                            for hit in section.get('hits', []):
-                                if len(search_results) >= limit:
-                                    break
-
-                                result = hit.get('result', {})
-                                title = result.get('title', '').strip()
-                                artist_name = result.get('primary_artist', {}).get('name', 'Unknown').strip()
-                                genius_id = result.get('id')
-
-                                if title and artist_name and genius_id:
-                                    search_results.append({
-                                        'title': title,
-                                        'artist': artist_name,
-                                        'genius_id': genius_id
-                                    })
-
-                    # If we got fewer results than requested, we've reached the end
-                    if not results.get('sections') or len(results['sections']) == 0:
-                        break
-
-                    page += 1
-                    time.sleep(self.genius_delay)  # Rate limiting
-
-                except Exception as e:
-                    logger.debug(f"Error in page {page} of search: {e}")
-                    break
-
-            logger.info(f"Found {len(search_results)} songs on Genius for '{query}'")
-            return search_results[:limit]
-
-        except AttributeError:
-            # Fallback: use simpler search if search_all not available
-            logger.debug("Trying simpler Genius search method")
-            try:
-                songs = []
-                # Try direct API call
-                token = os.getenv('GENIUS_API_TOKEN')
-                if not token:
-                    return []
-
-                url = f"https://api.genius.com/search?q={query}"
-                headers = {'Authorization': f'Bearer {token}'}
-
-                for page in range(1, (limit // 10) + 2):  # Each page returns ~10 results
-                    response = requests.get(
-                        url,
-                        headers=headers,
-                        params={'page': page, 'per_page': 10},
-                        timeout=10
-                    )
-
-                    if response.ok:
-                        data = response.json()
-                        hits = data.get('response', {}).get('hits', [])
-
-                        if not hits:
-                            break
-
-                        for hit in hits:
-                            if len(songs) >= limit:
-                                break
-
-                            result = hit.get('result', {})
-                            title = result.get('title', '').strip()
-                            artist_name = result.get('primary_artist', {}).get('name', 'Unknown').strip()
-                            genius_id = result.get('id')
-
-                            if title and artist_name and genius_id:
-                                songs.append({
-                                    'title': title,
-                                    'artist': artist_name,
-                                    'genius_id': genius_id
-                                })
-
-                        time.sleep(self.genius_delay)
-                    else:
-                        break
-
-                logger.info(f"Found {len(songs)} songs via direct API")
-                return songs
-
-            except Exception as e:
-                logger.error(f"Genius song search failed: {e}")
+            if not artist:
+                logger.warning(f"Artist not found: {query}")
                 return []
 
+            songs = []
+            for song in artist.songs:
+                songs.append({
+                    'title': song.title,
+                    'artist': artist.name,
+                })
+
+            logger.info(f"Found {len(songs)} songs for {artist.name}")
+            return songs
+
         except Exception as e:
-            logger.error(f"Genius song search failed: {e}")
+            logger.error(f"Genius artist search failed: {e}")
             return []

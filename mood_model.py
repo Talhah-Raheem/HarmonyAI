@@ -26,100 +26,49 @@ class HarmonyMoodModel:
 
     # Analyzes text with a lightweight rule-based detector to seed more advanced models later.
     def analyze_text(self, text: str) -> Dict[str, float]:
-        # Combine VADER sentiment with negation-aware keyword cues; remains offline and fast while
-        # capturing intensity better than raw substring counts alone.
+        # Expanded to 7 categories for a well-rounded analysis
         emotion_keywords: Dict[str, List[str]] = {
             "happy": [
-                "happy",
-                "joy",
-                "joyful",
-                "excited",
-                "hopeful",
-                "positive",
-                "uplifted",
-                "cheerful",
-                "glad",
-                "delighted",
-                "content",
-                "pleased",
+                "happy", "joy", "joyful", "hopeful", "positive", "cheerful", 
+                "glad", "delighted", "content", "pleased", "good", "great"
             ],
             "sad": [
-                "sad",
-                "down",
-                "depressed",
-                "lonely",
-                "melancholy",
-                "blue",
-                "gloomy",
-                "sorrowful",
-                "heartbroken",
-                "disappointed",
-                "miserable",
+                "sad", "down", "depressed", "lonely", "melancholy", "blue", 
+                "gloomy", "sorrowful", "heartbroken", "disappointed", "miserable"
             ],
             "angry": [
-                "angry",
-                "mad",
-                "frustrated",
-                "upset",
-                "irritated",
-                "furious",
-                "annoyed",
-                "enraged",
-                "outraged",
-                "hostile",
-                "resentful",
+                "angry", "mad", "furious", "enraged", "outraged", "hostile", 
+                "resentful", "hateful", "bitter", "annoyed", "frustrated"
             ],
             "calm": [
-                "calm",
-                "relaxed",
-                "peaceful",
-                "chill",
-                "serene",
-                "tranquil",
-                "mellow",
-                "composed",
-                "centered",
-                "balanced",
-                "still",
+                "calm", "relaxed", "peaceful", "chill", "serene", "tranquil", 
+                "mellow", "composed", "zen", "quiet", "still", "meditate"
             ],
+            # NEW: Handles "motivated", "pumped", "work" natively
+            "energetic": [
+                "excited", "energetic", "motivated", "pumped", "hyped", 
+                "driven", "active", "dynamic", "power", "ambitious", 
+                "productive", "fast", "awake", "dance", "workout"
+            ],
+            # NEW: Handles "stress" and "nerves" separately from Anger
+            "anxious": [
+                "anxious", "nervous", "worried", "stressed", "tense", 
+                "uneasy", "scared", "fearful", "panicked", "restless", 
+                "overwhelmed", "pressure"
+            ],
+            # NEW: The home for "tired" (Low Energy, Neutral/Negative)
+            "tired": [
+                "tired", "exhausted", "drained", "sleepy", "fatigue", 
+                "weary", "burnout", "beat", "worn out", "lazy", 
+                "sleep", "bed", "napping"
+            ]
         }
 
-        # Additional keyword patterns for motivation/energy states
-        motivation_keywords = [
-            "motivated",
-            "energized",
-            "driven",
-            "focused",
-            "determined",
-            "ambitious",
-            "productive",
-            "work",
-            "accomplish",
-            "achieve",
-            "get things done",
-            "push through",
-            "power through",
-        ]
-
-        # Negation patterns to detect reversed sentiment
+        # Negation patterns (Keep these!)
         negation_patterns = [
-            "not ",
-            "don't ",
-            "dont ",
-            "no ",
-            "never ",
-            "isn't ",
-            "isnt ",
-            "aren't ",
-            "arent ",
-            "wasn't ",
-            "wasnt ",
-            "won't ",
-            "wont ",
-            "can't ",
-            "cant ",
-            "wouldn't ",
-            "wouldnt ",
+            "not ", "don't ", "dont ", "no ", "never ", "isn't ", "isnt ", 
+            "aren't ", "arent ", "wasn't ", "wasnt ", "won't ", "wont ", 
+            "can't ", "cant ", "wouldn't ", "wouldnt "
         ]
 
         text_lower = text.lower()
@@ -129,7 +78,6 @@ class HarmonyMoodModel:
         for emotion, keywords in emotion_keywords.items():
             count = 0.0
             for keyword in keywords:
-                # Find all occurrences of this keyword
                 keyword_positions = []
                 start = 0
                 while True:
@@ -139,68 +87,55 @@ class HarmonyMoodModel:
                     keyword_positions.append(pos)
                     start = pos + 1
 
-                # Check each occurrence for negation
                 for pos in keyword_positions:
-                    # Look for negation in the 20 characters before the keyword
                     context_start = max(0, pos - 20)
                     context = text_lower[context_start:pos]
-
                     is_negated = any(neg in context for neg in negation_patterns)
 
                     if is_negated:
-                        # Keyword is negated - reduce its count or flip to opposite
                         count -= 0.5
                     else:
                         count += 1.0
 
-            raw_counts[emotion] = max(0.0, float(count))  # Don't allow negative counts
+            raw_counts[emotion] = max(0.0, float(count))
 
-        # Check for motivation/energy keywords
-        motivation_count = 0
-        for keyword in motivation_keywords:
-            if keyword in text_lower:
-                motivation_count += 1
-
-        # If user wants motivation/energy, boost happy and reduce sad
-        if motivation_count > 0:
-            raw_counts["happy"] += motivation_count * 0.5
-            raw_counts["sad"] = max(0.0, raw_counts["sad"] - motivation_count * 0.3)
-            # Boost energy by reducing calm
-            raw_counts["calm"] = max(0.0, raw_counts["calm"] - motivation_count * 0.2)
+        # (Removed the old "motivation_keywords" logic block here)
 
         pos = max(sentiment.get("pos", 0.0), 0.0)
         neg = max(sentiment.get("neg", 0.0), 0.0)
         neu = max(sentiment.get("neu", 0.0), 0.0)
         compound = sentiment.get("compound", 0.0)
 
-        # Blend sentiment polarity with keyword hints to derive per-emotion signals.
+        # Updated scoring logic for 7 categories
         scores: Dict[str, float] = {}
-        scores["happy"] = raw_counts["happy"] + max(compound, 0.0) + 0.5 * pos
-        scores["calm"] = raw_counts["calm"] + 0.6 * pos + 0.4 * neu
-        scores["sad"] = raw_counts["sad"] + max(-compound, 0.0) + 0.5 * neg
-        scores["angry"] = raw_counts["angry"] + 0.7 * neg + 0.3 * max(-compound, 0.0)
+        scores["happy"]     = raw_counts["happy"] + max(compound, 0.0) + 0.5 * pos
+        scores["calm"]      = raw_counts["calm"] + 0.6 * pos + 0.4 * neu
+        scores["sad"]       = raw_counts["sad"] + max(-compound, 0.0) + 0.5 * neg
+        scores["angry"]     = raw_counts["angry"] + 0.7 * neg + 0.3 * max(-compound, 0.0)
+        scores["energetic"] = raw_counts["energetic"] + 0.5 * pos + 0.3 * max(compound, 0.0)
+        scores["anxious"]   = raw_counts["anxious"] + 0.6 * neg + 0.4 * max(-compound, 0.0)
+        scores["tired"]     = raw_counts["tired"] + 0.5 * neg + 0.5 * neu
 
         total = sum(scores.values())
         if total == 0:
-            # If no signals are detected, fall back to uniform tiny scores to avoid zero vectors.
             uniform_score = 1.0 / len(emotion_keywords)
             return {emotion: uniform_score for emotion in emotion_keywords}
 
-        # Normalizing keeps outputs in [0, 1] regardless of text length or sentiment magnitude.
         return {emotion: value / total for emotion, value in scores.items()}
 
     # Projects the emotion scores onto the configured mood wheel to produce a MoodVector.
     def project_to_mood_wheel(self, emotion_scores: Dict[str, float]) -> MoodVector:
-        # The mood wheel maps discrete emotion labels into continuous axes (e.g., valence, energy)
-        # so that downstream ranking can compare user mood to song moods in the same space.
+        # Map 7 discrete emotions to the 3 continuous axes
         emotion_to_axes: Dict[str, Dict[str, float]] = {
-            "happy": {"valence": 1.0, "energy": 0.8, "tension": -0.5},
-            "sad": {"valence": -1.0, "energy": -0.5, "tension": 0.4},
-            "angry": {"valence": -0.8, "energy": 1.0, "tension": 1.0},
-            "calm": {"valence": 0.6, "energy": -0.6, "tension": -0.7},
+            "happy":     {"valence": 1.0,  "energy": 0.6,  "tension": -0.2},
+            "sad":       {"valence": -1.0, "energy": -0.4, "tension": 0.2},
+            "angry":     {"valence": -0.8, "energy": 0.8,  "tension": 1.0},
+            "calm":      {"valence": 0.5,  "energy": -0.8, "tension": -0.9},
+            "energetic": {"valence": 0.8,  "energy": 1.0,  "tension": 0.1},
+            "anxious":   {"valence": -0.5, "energy": 0.5,  "tension": 1.0},
+            "tired":     {"valence": -0.2, "energy": -1.0, "tension": -0.3}
         }
 
-        # Start with a neutral vector and accumulate weighted contributions for each axis.
         wheel_values = np.zeros(len(self.mood_axes), dtype=float)
         for emotion, score in emotion_scores.items():
             axis_weights = emotion_to_axes.get(emotion, {})
@@ -208,8 +143,6 @@ class HarmonyMoodModel:
                 weight = axis_weights.get(axis, 0.0)
                 wheel_values[index] += score * weight
 
-        # Clip keeps the projection bounded within the theoretical limits of the mood wheel,
-        # preventing extreme scores from dominating and ensuring consistent downstream usage.
         wheel_values = np.clip(wheel_values, -1.0, 1.0)
         return MoodVector(values=wheel_values, axes=self.mood_axes)
 

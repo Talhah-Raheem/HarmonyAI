@@ -105,7 +105,7 @@ class SongFetcher:
 
         # Search MusicBrainz if requested
         if source in ['musicbrainz', 'both']:
-            mb_songs = self.api_client.search_songs(query, limit=limit_per_query)
+            mb_songs = self.api_client.search_songs(f'artist:"{query}"', limit=limit_per_query)
             logger.info(f"MusicBrainz: Found {len(mb_songs)} songs")
             songs_metadata.extend(mb_songs)
 
