@@ -184,21 +184,30 @@ class HarmonyMoodModel:
 
         # Comparing each axis surfaces concrete evidence (e.g., valence, energy) that users
         # can relate to, converting abstract vectors into human-readable reasoning.
+        # Create user-friendly axis names
+        axis_labels = {
+            "valence": "happiness",
+            "energy": "energy",
+            "tension": "intensity"
+        }
+
         similarities: List[str] = []
         differences: List[str] = []
         for axis, user_value, song_value in zip(user_mood.axes, user_mood.values, song_mood):
+            friendly_name = axis_labels.get(axis, axis)
             if user_value > 0 and song_value > 0:
-                similarities.append(f"both emphasize high {axis}")
+                similarities.append(f"both have high {friendly_name}")
             elif user_value < 0 and song_value < 0:
-                similarities.append(f"both share low {axis}")
+                similarities.append(f"both have low {friendly_name}")
             elif user_value * song_value < 0:
-                descriptor = "balances" if abs(song_value) < abs(user_value) else "contrasts"
-                differences.append(f"the song {descriptor} your {axis}")
+                descriptor = "balances" if abs(song_value) < abs(user_value) else "contrasts with"
+                differences.append(f"it {descriptor} your {friendly_name}")
 
         # Tie the explanation back into the pipeline by anchoring on the strongest axis from the
         # mood projection, then describing how the ranked song relates to that dominant feeling.
         strongest_idx = int(np.argmax(np.abs(user_mood.values)))
         strongest_axis = user_mood.axes[strongest_idx]
+        friendly_strongest_axis = axis_labels.get(strongest_axis, strongest_axis)
         strongest_value = user_mood.values[strongest_idx]
         axis_direction = (
             "high" if strongest_value > 0 else "low" if strongest_value < 0 else "balanced"
@@ -206,13 +215,13 @@ class HarmonyMoodModel:
         song_axis_value = song_mood[strongest_idx]
         alignment_score = strongest_value * song_axis_value
         if alignment_score > 0:
-            axis_alignment = "aligns with"
+            axis_alignment = "matches"
         elif alignment_score < 0:
-            axis_alignment = "contrasts"
+            axis_alignment = "contrasts with"
         else:
             axis_alignment = "complements"
 
-        explanation = f"This song {axis_alignment} your {axis_direction}-{strongest_axis} mood"
+        explanation = f"This song {axis_alignment} your {axis_direction} {friendly_strongest_axis}"
         if similarities:
             explanation += f", with {', '.join(similarities[:2])}"
         if differences:

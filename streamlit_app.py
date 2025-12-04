@@ -194,18 +194,18 @@ def render_sidebar(mood_axes: List[str]) -> int:
         """,
         unsafe_allow_html=True,
     )
-    top_k = st.sidebar.slider("Playlist size", min_value=1, max_value=4, value=3)
+    top_k = st.sidebar.slider("Playlist size", min_value=1, max_value=10, value=5)
 
     axis_descriptions = {
-        "valence": "Negative ↔ Positive tone",
-        "energy": "Calm ↔ Elevated activation",
-        "tension": "Soothing ↔ Intense feelings",
+        "valence": "Sad ↔ Happy",
+        "energy": "Calm ↔ Energetic",
+        "tension": "Relaxed ↔ Intense",
     }
     st.sidebar.markdown(
         """
         <div class="sidebar-card">
-            <h4>Mood Axes</h4>
-            <p>Reference guide for the current projection axes.</p>
+            <h4>Mood Dimensions</h4>
+            <p>How we analyze your emotional state.</p>
         """,
         unsafe_allow_html=True,
     )
@@ -397,7 +397,6 @@ def display_recommendations(
             <article class="playlist-card" style="--accent:{accent};">
                 <div class="playlist-cover" style="background: radial-gradient(circle at 30% 20%, {accent} 0%, rgba(0,0,0,0) 60%), rgba(8,10,18,0.95);">
                     <div class="playlist-icon">{icon_svg}</div>
-                    <button class="play-button" aria-label="Play {title}">▶</button>
                 </div>
                 <div class="playlist-body">
                     <div class="playlist-topline">
@@ -452,19 +451,6 @@ def display_recommendations(
         .playlist-icon svg {{
             width: 70px;
             height: 70px;
-        }}
-        .play-button {{
-            position: absolute;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-            border: none;
-            background: var(--accent, #6366f1);
-            color: #0c0f16;
-            font-size: 1.2rem;
-            cursor: pointer;
         }}
         .playlist-body {{
             padding: 1.5rem;
