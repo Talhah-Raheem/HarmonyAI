@@ -40,6 +40,19 @@ python -m scripts.build_embeddings
 
 streamlit run streamlit_app.py
 ```
+
+## Expanding the Dataset (Optional)
+
+HarmonyAI is designed to run entirely offline using the included song dataset.  
+However, the system can be extended to support larger catalogs by integrating the Genius Lyrics API.
+
+To expand the dataset:
+1. Obtain a Genius API key from https://genius.com/api-clients
+2. Create a `.env` file in the project root
+3. Add your API key: GENIUS_API_TOKEN=your_api_key_here
+4. Modify or extend the data ingestion scripts to fetch additional songs and lyrics. This step is **optional** and not required to run the current version of the project.
+
+
 ### Using the App
 
 Enter a mood sentence
