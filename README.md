@@ -55,8 +55,23 @@ To expand the dataset:
 
 ### Using the App
 
-Enter a mood sentence
+1. Enter a mood sentence.
+   - HarmonyAI projects text into a mood space by scanning for explicit emotion keywords (e.g., *sad, anxious, motivated*).  
+   - It **does not** infer tone of voice, sarcasm, slang, or prompts unrelated to how you feel. Clear emotion words produce the best playlists.
+   - Recommended placeholder phrasing: “Describe your current mood using clear emotional language (e.g., ‘tired but hopeful’, ‘calm and focused’).”
+   - Valid prompts include concise emotion descriptors such as *happy, sad, calm, tired, energetic, anxious, hopeful, overwhelmed, peaceful,* or *angry*. These keywords give the analyzer something concrete to match.
+2. Submit the input.
+3. View song recommendations ranked by emotional similarity.
 
-Submit the input
+## Limitations
 
-View song recommendations ranked by emotional similarity
+Manual and qualitative testing revealed a limitation in the current sentiment analysis approach when processing highly charged, colloquial, or all-caps user input. For example, the prompt “HOW COULD SHE SMASH MY HEART LIKE THAT AFTER ALL THAT I DID FOR HER?!” was incorrectly mapped to a mood profile dominated by positive attributes such as happy, calm, and energetic. This behavior highlights a known limitation of rule-based sentiment models such as VADER, which can struggle to interpret slang, emotional intensity, tone of speech, or prompts that avoid explicit emotion words. As a result, certain emotionally intense prompts may be inaccurately projected into the three-axis mood wheel representation.
+
+Current analyzer constraints:
+- Relies on explicit emotion keywords (sad, hopeful, anxious, calm); prompts without them may be misread.
+- Does not capture tone/sarcasm, shouty all-caps phrasing, or figurative language.
+- Slang-heavy or off-topic prompts (e.g., narratives without feelings) generally return low-quality recommendations.
+
+## Future Work
+
+- Integrate neural sentence-embedding models (e.g., BERT or Sentence Transformers) so the system captures nuanced, high-arousal user input. This upgrade is critical to address the system’s observed weakness with high-arousal and colloquial text prompts.

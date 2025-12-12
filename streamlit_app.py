@@ -241,11 +241,26 @@ def render_hero_section() -> None:
 def mood_prompt_form() -> str | None:
     with st.form("mood_form"):
         st.subheader("Tell HarmonyAI How You're Feeling")
+        st.caption(
+            "Use clear emotional language (avoid slang or all caps). "
+            "Including explicit emotion words like calm, anxious, or energetic improves results."
+        )
+        st.caption(
+            "Valid prompt keywords include happy, sad, calm, tired, energetic, anxious, hopeful, overwhelmed, peaceful, or angry."
+        )
+        st.info(
+            "Manual testing showed that highly charged slang or ALL-CAPS prompts can map to the "
+            "wrong mood profile because rule-based sentiment models like VADER miss tone. "
+            "Keeping inputs clear and balanced helps HarmonyAI interpret them accurately."
+        )
         user_text = st.text_area(
             "Mood prompt",
             value="I'm tired from school but trying to stay motivated for work tonight.",
             height=150,
-            placeholder="E.g., I'm drained but trying to stay positive about what's ahead.",
+            placeholder=(
+                "Describe your current mood using clear emotional language "
+                "(e.g., 'tired but hopeful', 'calm and focused')."
+            ),
         )
         submitted = st.form_submit_button("Generate Playlist", use_container_width=True)
     if not submitted:
