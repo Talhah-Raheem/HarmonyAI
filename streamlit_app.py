@@ -248,11 +248,6 @@ def mood_prompt_form() -> str | None:
         st.caption(
             "Valid prompt keywords include happy, sad, calm, tired, energetic, anxious, hopeful, overwhelmed, peaceful, or angry."
         )
-        st.info(
-            "Manual testing showed that highly charged slang or ALL-CAPS prompts can map to the "
-            "wrong mood profile because rule-based sentiment models like VADER miss tone. "
-            "Keeping inputs clear and balanced helps HarmonyAI interpret them accurately."
-        )
         user_text = st.text_area(
             "Mood prompt",
             value="I'm tired from school but trying to stay motivated for work tonight.",
